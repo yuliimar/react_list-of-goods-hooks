@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import 'bulma/css/bulma.css';
 import './App.scss';
 
@@ -6,7 +6,6 @@ export enum SortType {
   NONE = 'NONE',
   ALPHABETIC = 'ALPHABETIC',
   LENGTH = 'LENGTH',
-  REVERSE = 'REVERSE',
 }
 
 export const goodsFromServer = [
@@ -23,59 +22,51 @@ export const goodsFromServer = [
 ];
 
 export const App: React.FC = () => {
-  const [goods, setGoods] = useState<string[]>(goodsFromServer);
   const [sortType, setSortType] = useState<SortType>(SortType.NONE);
   const [isReversed, setIsReversed] = useState(false);
 
+  const sortedGoods = useMemo(() => {
+    let result = [...goodsFromServer];
+
+    if (sortType === SortType.ALPHABETIC) {
+      result.sort((a, b) => a.localeCompare(b));
+    } else if (sortType === SortType.LENGTH) {
+      result.sort((a, b) => a.length - b.length);
+    }
+
+    if (isReversed) {
+      result.reverse();
+    }
+
+    return result;
+  }, [sortType, isReversed]);
+
   const sortGoods = (type: SortType) => {
-    let newSortType = type;
-    let newIsReversed = isReversed;
-
-    // Handle reverse toggle
-    if (type === SortType.REVERSE) {
-      newIsReversed = !isReversed;
-      newSortType = sortType === SortType.REVERSE ? SortType.NONE : sortType;
-    } else if (type === SortType.NONE) {
-      newSortType = SortType.NONE;
-      newIsReversed = false;
+    if (type === SortType.NONE) {
+      setSortType(SortType.NONE);
+      setIsReversed(false);
+      return;
     }
+    setSortType(type);
+  };
 
-    setSortType(newSortType);
-    setIsReversed(newIsReversed);
-
-    // Apply sorting
-    let sortedGoods = [...goodsFromServer];
-
-    if (newSortType === SortType.ALPHABETIC) {
-      sortedGoods.sort((a, b) => a.localeCompare(b));
-    } else if (newSortType === SortType.LENGTH) {
-      sortedGoods.sort((a, b) => a.length - b.length);
-    }
-
-    if (newIsReversed) {
-      sortedGoods.reverse();
-    }
-
-    setGoods(sortedGoods);
+  const toggleReverse = () => {
+    setIsReversed(!isReversed);
   };
 
   const needsReset = sortType !== SortType.NONE || isReversed;
 
   const getButtonClass = (buttonType: SortType) => {
     const baseClasses = 'button';
-    const isActive =
-      (buttonType === SortType.REVERSE && isReversed) ||
-      (buttonType !== SortType.REVERSE && sortType === buttonType);
+    const isActive = sortType === buttonType;
 
     switch (buttonType) {
       case SortType.ALPHABETIC:
         return `${baseClasses} is-info${isActive ? '' : ' is-light'}`;
       case SortType.LENGTH:
         return `${baseClasses} is-success${isActive ? '' : ' is-light'}`;
-      case SortType.REVERSE:
-        return `${baseClasses} is-warning${isReversed ? '' : ' is-light'}`;
       default:
-        return `${baseClasses} is-danger is-light`;
+        return `${baseClasses} is-light`;
     }
   };
 
@@ -102,8 +93,8 @@ export const App: React.FC = () => {
 
         <button
           type="button"
-          className={getButtonClass(SortType.REVERSE)}
-          onClick={() => sortGoods(SortType.REVERSE)}
+          className={`button is-warning${isReversed ? '' : ' is-light'}`}
+          onClick={toggleReverse}
           data-cy="sortReverse"
         >
           Reverse
@@ -122,7 +113,7 @@ export const App: React.FC = () => {
       </div>
 
       <ul>
-        {goods.map(good => (
+        {sortedGoods.map(good => (
           <li key={good} data-cy="Good">
             {good}
           </li>
